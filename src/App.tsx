@@ -1,5 +1,6 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect } from 'react';
 import { Box, SimpleGrid } from '@chakra-ui/react';
+import { useParams } from 'react-router-dom';
 
 import Header from './components/Header';
 import Navigator from './components/Navigator';
@@ -8,39 +9,21 @@ import StatsContainer from './components/StatsContainer';
 import NextSteps from './components/NextSteps';
 import Footer from './components/Footer';
 
-import { CurriculumType } from './models/Curriculum';
+import useCurriculum from './service/hook';
+
+type ParamsType = {
+  course: string;
+  university: string;
+};
 
 function App(): React.ReactElement {
-  const [curriculum, setCurriculum] = useState<
-    CurriculumType | Record<string, never>
-  >({});
-  const [academicTotalDone, setAcademicTotalDone] = useState(0);
-  const [academicObligatoryDone, setAcademicObligatoryDone] = useState(0);
-  const [academicElectiveDone, setAcademicElectiveDone] = useState(0);
-
-  const handleClick = ({ isActive, isObligatory, hours }) => {
-    if (isActive) {
-      if (isObligatory) {
-        setAcademicObligatoryDone(academicObligatoryDone + hours);
-      } else {
-        setAcademicElectiveDone(academicElectiveDone + hours);
-      }
-      setAcademicTotalDone(academicTotalDone + hours);
-    } else {
-      if (isObligatory) {
-        setAcademicObligatoryDone(academicObligatoryDone - hours);
-      } else {
-        setAcademicElectiveDone(academicElectiveDone - hours);
-      }
-      setAcademicTotalDone(academicTotalDone - hours);
-    }
-  };
+  const { loadCurriculum, curriculum, updateState, completed } =
+    useCurriculum();
+  const params = useParams<ParamsType>();
 
   useEffect(() => {
-    fetch('./university/UFPE/engenhariaDaComputacao.json')
-      .then((response) => response.json())
-      .then((json) => setCurriculum(json));
-  }, []);
+    loadCurriculum(params.university, params.course);
+  }, [loadCurriculum, params]);
 
   const arrayOfSemesters = Array.from(
     { length: curriculum?.semesters },
@@ -50,7 +33,10 @@ function App(): React.ReactElement {
   return (
     <Box m="5">
       <Header />
-      <Navigator />
+      <Navigator
+        university={curriculum.university}
+        course={curriculum.course}
+      />
       <Box w="100%" maxH="60vh" overflow="scroll">
         {arrayOfSemesters.map((semester) => (
           <Box d="flex" w="100%" key={`row-${semester}`}>
@@ -60,7 +46,7 @@ function App(): React.ReactElement {
                 <DisciplineBox
                   key={item.name}
                   id={item.code}
-                  onClick={handleClick}
+                  onClick={updateState}
                   {...item}
                 />
               ))}
@@ -69,9 +55,9 @@ function App(): React.ReactElement {
       </Box>
       <SimpleGrid columns={[1, 2]} spacing="5">
         <StatsContainer
-          academicTotalDone={academicTotalDone}
-          academicObligatoryDone={academicObligatoryDone}
-          academicElectiveDone={academicElectiveDone}
+          academicTotal={completed.academicTotal}
+          academicObligatory={completed.academicObligatory}
+          academicElective={completed.academicElective}
           totalHours={curriculum?.totalHours}
           totalHoursObligatory={curriculum?.totalHoursObligatory}
           totalHoursElective={curriculum?.totalHoursElective}
